@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SGデータ集計</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d9dee8;
+      --line-strong: #bcc5d3;
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --danger-bg: #fff7ed;
+      --danger-line: #fed7aa;
+      --danger-text: #9a3412;
+      --ok-bg: #ecfdf5;
+      --ok-line: #bbf7d0;
+      --ok-text: #166534;
+      --shadow: 0 10px 24px rgba(15, 23, 42, .08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 26px 22px 18px;
+      background: linear-gradient(135deg, #172554 0%, #1d4ed8 58%, #60a5fa 100%);
+      color: white;
+    }
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 3vw, 36px);
+      letter-spacing: .02em;
+    }
+    .lead {
+      margin: 0;
+      color: rgba(255,255,255,.88);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-title h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .upload-box {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 220px;
+      gap: 14px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    input[type="file"], select, button {
+      width: 100%;
+      font: inherit;
+    }
+    input[type="file"], select {
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: white;
+      color: var(--text);
+      padding: 9px 10px;
+    }
+    select[multiple] {
+      min-height: 116px;
+      padding: 8px;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 13px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .12s ease;
+    }
+    button:hover { background: var(--accent-dark); }
+    button.secondary {
+      background: #eef2ff;
+      color: #1e3a8a;
+      border: 1px solid #c7d2fe;
+    }
+    button.secondary:hover { background: #e0e7ff; }
+    button.ghost {
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid var(--line);
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+    button.ghost:hover { background: #eef2f7; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .filter-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .checks label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+    .actions button { width: auto; }
+
+    .status {
+      display: none;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .status.show { display: block; }
+    .status.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-text); }
+    .status.warn { background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--danger-text); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .summary-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fbfdff;
+    }
+    .summary-item .num {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+    .summary-item .cap {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 70vh;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+    }
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    th, td {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: right;
+      background: white;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f1f5f9;
+      font-weight: 800;
+      color: #334155;
+      text-align: center;
+    }
+    th:first-child, td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f8fafc;
+      text-align: left;
+      font-weight: 700;
+    }
+    th:first-child { z-index: 3; background: #e2e8f0; }
+    tr:last-child td { font-weight: 800; background: #f8fafc; }
+    td.empty { color: #94a3b8; text-align: center; }
+
+    .small-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+      margin-top: 10px;
+    }
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .upload-box, .controls, .filters, .summary-grid {
+        grid-template-columns: 1fr;
+      }
+      header { padding: 22px 16px 16px; }
+      main { padding: 16px 10px 32px; }
+      .actions { justify-content: stretch; flex-direction: column; }
+      .actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>SGデータ集計</h1>
+      <p class="lead">CSVをブラウザ上で読み込み、「エリア・カテゴリ・項目・求人会社」を軸にして集計表を作成します。データはサーバーへ送信されません。</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="card-title">
+        <h2>1. CSV読み込み</h2>
+      </div>
+      <div class="upload-box">
+        <div>
+          <label for="csvFile">CSVファイル</label>
+          <input id="csvFile" type="file" accept=".csv,text/csv" />
+        </div>
+        <div>
+          <label for="encoding">文字コード</label>
+          <select id="encoding">
+            <option value="auto">自動判定（UTF-8 → Shift_JIS）</option>
+            <option value="utf-8">UTF-8</option>
+            <option value="shift_jis">Shift_JIS / CP932</option>
+          </select>
+        </div>
+      </div>
+      <div id="loadStatus" class="status"></div>
+      <div id="summary" class="summary-grid hidden"></div>
+      <p class="small-note">想定フォーマット：1〜3列目が「エリア」「カテゴリ」「項目」、4列目以降が求人会社名。数値内のカンマ、空欄、#DIV/0! は自動処理します。</p>
+    </section>
+
+    <section id="controlCard" class="card hidden">
+      <div class="card-title">
+        <h2>2. 集計条件</h2>
+      </div>
+
+      <div class="controls">
+        <div>
+          <label for="rowDim">行方向</label>
+          <select id="rowDim"></select>
+        </div>
+        <div>
+          <label for="colDim">列方向</label>
+          <select id="colDim"></select>
+        </div>
+        <div>
+          <label for="emptyMode">空欄セル</label>
+          <select id="emptyMode">
+            <option value="dash">「-」で表示</option>
+            <option value="zero">0で表示</option>
+          </select>
+        </div>
+        <div>
+          <label for="sortMode">行の並び順</label>
+          <select id="sortMode">
+            <option value="source">CSV出現順</option>
+            <option value="desc">行合計の降順</option>
+            <option value="asc">行合計の昇順</option>
+            <option value="name">名称順</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div>
+          <label for="areaFilter">エリア</label>
+          <select id="areaFilter" multiple></select>
+          <div class="filter-actions"><button class="ghost" data-target="areaFilter" data-action="all">全選択</button><button class="ghost" data-target="areaFilter" data-action="none">解除</button></div>
+        </div>
+        <div>
+          <label for="categoryFilter">カテゴリ</label>
+          <select id="categoryFilter" multiple></select>
+          <div class="filter-actions"><button class="ghost" data-target="categoryFilter" data-action="all">全選択</button><button class="ghost" data-target="categoryFilter" data-action="none">解除</button></div>
+        </div>
+        <div>
+          <label for="itemFilter">項目</label>
+          <select id="itemFilter" multiple></select>
+          <div class="filter-actions"><button class="ghost" data-target="itemFilter" data-action="all">全選択</button><button class="ghost" data-target="itemFilter" data-action="none">解除</button></div>
+        </div>
+        <div>
+          <label for="companyFilter">求人会社</label>
+          <select id="companyFilter" multiple></select>
+          <div class="filter-actions"><button class="ghost" data-target="companyFilter" data-action="all">全選択</button><button class="ghost" data-target="companyFilter" data-action="none">解除</button></div>
+        </div>
+      </div>
+
+      <div class="checks">
+        <label><input id="excludeAreaTotal" type="checkbox" checked /> エリア「全社」を除外</label>
+        <label><input id="excludeCategoryTotal" type="checkbox" checked /> カテゴリ「計」を除外</label>
+        <label><input id="excludeCompanyTotal" type="checkbox" checked /> 求人会社「全社計」を除外</label>
+        <label><input id="showTotals" type="checkbox" checked /> 行合計・列合計を表示</label>
+      </div>
+
+      <div class="actions">
+        <button id="renderBtn">集計する</button>
+        <button id="downloadBtn" class="secondary" disabled>表をCSVで保存</button>
+      </div>
+      <div id="conditionStatus" class="status"></div>
+    </section>
+
+    <section id="resultCard" class="card hidden">
+      <div class="card-title">
+        <h2>3. 集計結果</h2>
+      </div>
+      <div id="resultMeta" class="small-note"></div>
+      <div id="tableWrap" class="table-wrap"></div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  'use strict';
+
+  const DIMENSIONS = ['エリア', 'カテゴリ', '項目', '求人会社'];
+  const BASE_ITEMS = ['媒体費', '応募', '入職'];
+  const DERIVED_ITEMS = ['応募単価', '入職単価'];
+  const ITEM_ORDER = ['媒体費', '応募', '応募単価', '入職', '入職単価'];
+
+  let rawRows = [];
+  let longRows = [];
+  let companyColumns = [];
+  let lastTable = [];
+
+  const $ = (id) => document.getElementById(id);
+
+  const el = {
+    file: $('csvFile'),
+    encoding: $('encoding'),
+    loadStatus: $('loadStatus'),
+    controlCard: $('controlCard'),
+    resultCard: $('resultCard'),
+    summary: $('summary'),
+    rowDim: $('rowDim'),
+    colDim: $('colDim'),
+    emptyMode: $('emptyMode'),
+    sortMode: $('sortMode'),
+    areaFilter: $('areaFilter'),
+    categoryFilter: $('categoryFilter'),
+    itemFilter: $('itemFilter'),
+    companyFilter: $('companyFilter'),
+    excludeAreaTotal: $('excludeAreaTotal'),
+    excludeCategoryTotal: $('excludeCategoryTotal'),
+    excludeCompanyTotal: $('excludeCompanyTotal'),
+    showTotals: $('showTotals'),
+    renderBtn: $('renderBtn'),
+    downloadBtn: $('downloadBtn'),
+    conditionStatus: $('conditionStatus'),
+    resultMeta: $('resultMeta'),
+    tableWrap: $('tableWrap'),
+  };
+
+  function setStatus(node, type, html) {
+    node.className = `status show ${type}`;
+    node.innerHTML = html;
+  }
+
+  function clearStatus(node) {
+    node.className = 'status';
+    node.innerHTML = '';
+  }
+
+  function decodeBuffer(buffer, mode) {
+    if (mode !== 'auto') {
+      return { text: new TextDecoder(mode).decode(buffer), encoding: mode };
+    }
+    try {
+      return { text: new TextDecoder('utf-8', { fatal: true }).decode(buffer), encoding: 'utf-8' };
+    } catch (e) {
+      return { text: new TextDecoder('shift_jis').decode(buffer), encoding: 'shift_jis' };
+    }
+  }
+
+  function parseCSV(text) {
+    text = text.replace(/^\uFEFF/, '');
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
+
+      if (inQuotes) {
+        if (ch === '"' && next === '"') {
+          cell += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          cell += ch;
+        }
+        continue;
+      }
+
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        row.push(cell);
+        cell = '';
+      } else if (ch === '\r') {
+        if (next === '\n') i++;
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = '';
+      } else if (ch === '\n') {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = '';
+      } else {
+        cell += ch;
+      }
+    }
+
+    if (cell.length || row.length) {
+      row.push(cell);
+      rows.push(row);
+    }
+
+    return rows.filter(r => r.some(v => String(v).trim() !== ''));
+  }
+
+  function parseNumber(value) {
+    if (value === null || value === undefined) return null;
+    let s = String(value).trim();
+    if (!s || s === '-' || s.startsWith('#')) return null;
+    let negativeByParen = /^\(.+\)$/.test(s);
+    s = s.replace(/[¥￥円,%\s]/g, '').replace(/,/g, '').replace(/[()]/g, '');
+    if (!s || isNaN(Number(s))) return null;
+    const n = Number(s);
+    return negativeByParen ? -n : n;
+  }
+
+  function uniqueInOrder(values) {
+    const seen = new Set();
+    const result = [];
+    for (const value of values) {
+      const v = String(value ?? '').trim();
+      if (!v || seen.has(v)) continue;
+      seen.add(v);
+      result.push(v);
+    }
+    return result;
+  }
+
+  function fillSelect(select, values, selectedValues = values) {
+    select.innerHTML = '';
+    const selected = new Set(selectedValues);
+    for (const value of values) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      option.selected = selected.has(value);
+      select.appendChild(option);
+    }
+  }
+
+  function getSelected(select) {
+    return Array.from(select.selectedOptions).map(opt => opt.value);
+  }
+
+  function initDimensionSelects() {
+    for (const select of [el.rowDim, el.colDim]) {
+      select.innerHTML = '';
+      for (const dim of DIMENSIONS) {
+        const option = document.createElement('option');
+        option.value = dim;
+        option.textContent = dim;
+        select.appendChild(option);
+      }
+    }
+    el.rowDim.value = 'エリア';
+    el.colDim.value = '求人会社';
+  }
+
+  function normalize(rows) {
+    if (rows.length < 2) throw new Error('CSVにデータ行がありません。');
+    const headers = rows[0].map(h => String(h ?? '').trim().replace(/^\uFEFF/, ''));
+    const first3 = headers.slice(0, 3);
+    const expected = ['エリア', 'カテゴリ', '項目'];
+    for (let i = 0; i < expected.length; i++) {
+      if (first3[i] !== expected[i]) {
+        throw new Error(`CSVの${i + 1}列目は「${expected[i]}」を想定しています。実際は「${first3[i] || '(空欄)'}」でした。`);
+      }
+    }
+
+    companyColumns = headers.slice(3).filter(Boolean);
+    if (!companyColumns.length) throw new Error('4列目以降の求人会社列が見つかりません。');
+
+    const result = [];
+    for (let r = 1; r < rows.length; r++) {
+      const src = rows[r];
+      const area = String(src[0] ?? '').trim();
+      const category = String(src[1] ?? '').trim();
+      const item = String(src[2] ?? '').trim();
+      if (!area && !category && !item) continue;
+      for (let c = 3; c < headers.length; c++) {
+        const company = headers[c];
+        if (!company) continue;
+        const original = src[c] ?? '';
+        result.push({
+          'エリア': area,
+          'カテゴリ': category,
+          '項目': item,
+          '求人会社': company,
+          value: parseNumber(original),
+          original: original,
+        });
+      }
+    }
+    return result;
+  }
+
+  function buildSummary(encoding) {
+    const areaCount = uniqueInOrder(longRows.map(r => r['エリア'])).length;
+    const categoryCount = uniqueInOrder(longRows.map(r => r['カテゴリ'])).length;
+    const itemCount = uniqueInOrder(longRows.map(r => r['項目'])).length;
+    const nullCount = longRows.filter(r => r.value === null).length;
+    el.summary.innerHTML = [
+      ['読込文字コード', encoding],
+      ['元データ行', (rawRows.length - 1).toLocaleString('ja-JP')],
+      ['求人会社列', companyColumns.length.toLocaleString('ja-JP')],
+      ['縦持ち変換後', longRows.length.toLocaleString('ja-JP')],
+      ['数値化不可/空欄', nullCount.toLocaleString('ja-JP')],
+    ].map(([cap, num]) => `<div class="summary-item"><div class="num">${escapeHtml(num)}</div><div class="cap">${escapeHtml(cap)}</div></div>`).join('');
+    el.summary.classList.remove('hidden');
+  }
+
+  function setupFilters() {
+    initDimensionSelects();
+    const areas = uniqueInOrder(longRows.map(r => r['エリア']));
+    const categories = uniqueInOrder(longRows.map(r => r['カテゴリ']));
+    const items = uniqueInOrder(longRows.map(r => r['項目'])).sort((a, b) => {
+      const ia = ITEM_ORDER.indexOf(a), ib = ITEM_ORDER.indexOf(b);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+    const companies = uniqueInOrder(longRows.map(r => r['求人会社']));
+
+    fillSelect(el.areaFilter, areas, areas);
+    fillSelect(el.categoryFilter, categories, categories);
+    fillSelect(el.itemFilter, items, items.includes('媒体費') ? ['媒体費'] : [items[0]].filter(Boolean));
+    fillSelect(el.companyFilter, companies, companies);
+
+    el.controlCard.classList.remove('hidden');
+    el.resultCard.classList.add('hidden');
+    clearStatus(el.conditionStatus);
+  }
+
+  function passesTotalExclusion(row) {
+    if (el.excludeAreaTotal.checked && row['エリア'] === '全社') return false;
+    if (el.excludeCategoryTotal.checked && row['カテゴリ'] === '計') return false;
+    if (el.excludeCompanyTotal.checked && row['求人会社'] === '全社計') return false;
+    return true;
+  }
+
+  function selectedFilters() {
+    return {
+      areas: new Set(getSelected(el.areaFilter)),
+      categories: new Set(getSelected(el.categoryFilter)),
+      items: getSelected(el.itemFilter),
+      companies: new Set(getSelected(el.companyFilter)),
+    };
+  }
+
+  function makeKey(parts) {
+    return parts.map(v => String(v)).join('\u001F');
+  }
+
+  function ensureBucket(map, key) {
+    if (!map.has(key)) map.set(key, { cost: 0, apply: 0, hire: 0, has: false });
+    return map.get(key);
+  }
+
+  function addToBucket(bucket, item, value) {
+    if (value === null || !BASE_ITEMS.includes(item)) return;
+    if (item === '媒体費') bucket.cost += value;
+    if (item === '応募') bucket.apply += value;
+    if (item === '入職') bucket.hire += value;
+    bucket.has = true;
+  }
+
+  function metricValue(bucket, item) {
+    if (!bucket || !bucket.has) return null;
+    if (item === '媒体費') return bucket.cost;
+    if (item === '応募') return bucket.apply;
+    if (item === '入職') return bucket.hire;
+    if (item === '応募単価') return bucket.apply ? bucket.cost / bucket.apply : null;
+    if (item === '入職単価') return bucket.hire ? bucket.cost / bucket.hire : null;
+    return null;
+  }
+
+  function formatValue(value, item) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return el.emptyMode.value === 'zero' ? '0' : '-';
+    }
+    const rounded = DERIVED_ITEMS.includes(item) ? Math.round(value) : Math.round(value);
+    return rounded.toLocaleString('ja-JP');
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[ch]));
+  }
+
+  function compareSourceOrder(a, b, orderMap) {
+    return (orderMap.get(a) ?? 999999) - (orderMap.get(b) ?? 999999);
+  }
+
+  function renderTable() {
+    if (!longRows.length) return;
+
+    const rowDim = el.rowDim.value;
+    const colDim = el.colDim.value;
+    const filters = selectedFilters();
+    const warnings = [];
+
+    if (rowDim === colDim) warnings.push('行方向と列方向が同じです。必要に応じてどちらかを変更してください。');
+    if (!filters.items.length) {
+      warnings.push('項目が未選択のため、集計できません。');
+      setStatus(el.conditionStatus, 'warn', warnings.join('<br>'));
+      return;
+    }
+    if (rowDim !== '項目' && colDim !== '項目' && filters.items.length > 1) {
+      warnings.push(`「項目」が行・列に含まれていないため、表示値は先頭の「${escapeHtml(filters.items[0])}」のみを使用します。複数項目を並べたい場合は、行方向または列方向に「項目」を指定してください。`);
+    }
+
+    const itemAxis = rowDim === '項目' || colDim === '項目';
+    const cellBuckets = new Map();
+    const rowTotalBuckets = new Map();
+    const colTotalBuckets = new Map();
+    const grandBuckets = new Map();
+    const rowOrder = [];
+    const colOrder = [];
+    const rowOrderSet = new Set();
+    const colOrderSet = new Set();
+
+    for (const rec of longRows) {
+      if (!passesTotalExclusion(rec)) continue;
+      if (!filters.areas.has(rec['エリア'])) continue;
+      if (!filters.categories.has(rec['カテゴリ'])) continue;
+      if (!filters.companies.has(rec['求人会社'])) continue;
+      if (!BASE_ITEMS.includes(rec['項目'])) continue;
+
+      const rowLabel = rowDim === '項目' ? '__ITEM__' : rec[rowDim];
+      const colLabel = colDim === '項目' ? '__ITEM__' : rec[colDim];
+      if (!rowOrderSet.has(rowLabel)) { rowOrderSet.add(rowLabel); rowOrder.push(rowLabel); }
+      if (!colOrderSet.has(colLabel)) { colOrderSet.add(colLabel); colOrder.push(colLabel); }
+
+      addToBucket(ensureBucket(cellBuckets, makeKey([rowLabel, colLabel])), rec['項目'], rec.value);
+      addToBucket(ensureBucket(rowTotalBuckets, rowLabel), rec['項目'], rec.value);
+      addToBucket(ensureBucket(colTotalBuckets, colLabel), rec['項目'], rec.value);
+      addToBucket(ensureBucket(grandBuckets, '__GRAND__'), rec['項目'], rec.value);
+    }
+
+    let rows = rowDim === '項目' ? filters.items.slice() : rowOrder.slice();
+    let cols = colDim === '項目' ? filters.items.slice() : colOrder.slice();
+
+    const sourceOrder = new Map(rows.map((v, i) => [v, i]));
+    if (el.sortMode.value === 'name') {
+      rows.sort((a, b) => String(a).localeCompare(String(b), 'ja'));
+    } else if (el.sortMode.value === 'desc' || el.sortMode.value === 'asc') {
+      rows.sort((a, b) => {
+        const va = rowTotalForLabel(a, rowDim, filters.items, rowTotalBuckets, grandBuckets);
+        const vb = rowTotalForLabel(b, rowDim, filters.items, rowTotalBuckets, grandBuckets);
+        return el.sortMode.value === 'desc' ? vb - va : va - vb;
+      });
+    } else {
+      rows.sort((a, b) => compareSourceOrder(a, b, sourceOrder));
+    }
+
+    if (!rows.length || !cols.length) {
+      setStatus(el.conditionStatus, 'warn', '条件に一致するデータがありません。フィルターや小計除外設定を見直してください。');
+      el.resultCard.classList.add('hidden');
+      return;
+    }
+
+    const displayItemForCell = (r, c) => {
+      if (rowDim === '項目') return r;
+      if (colDim === '項目') return c;
+      return filters.items[0];
+    };
+    const baseRowKey = (r) => rowDim === '項目' ? '__ITEM__' : r;
+    const baseColKey = (c) => colDim === '項目' ? '__ITEM__' : c;
+
+    const showTotals = el.showTotals.checked;
+    const showRowTotal = showTotals && colDim !== '項目';
+    const showColTotal = showTotals && rowDim !== '項目';
+    if (showTotals && itemAxis && (!showRowTotal || !showColTotal)) {
+      warnings.push('「項目」を行または列にした場合、媒体費・応募・単価など単位の違う値を横断して足し合わせないよう、一部の合計欄は自動的に非表示にします。');
+    }
+    const headerCells = [`<th>${escapeHtml(rowDim)} \\ ${escapeHtml(colDim)}</th>`]
+      .concat(cols.map(c => `<th>${escapeHtml(c)}</th>`));
+    if (showRowTotal) headerCells.push('<th>合計</th>');
+
+    let html = '<table><thead><tr>' + headerCells.join('') + '</tr></thead><tbody>';
+    lastTable = [];
+    const csvHeader = [rowDim + ' \\ ' + colDim, ...cols];
+    if (showRowTotal) csvHeader.push('合計');
+    lastTable.push(csvHeader);
+
+    for (const r of rows) {
+      const tds = [`<td>${escapeHtml(r)}</td>`];
+      const csvRow = [r];
+      for (const c of cols) {
+        const item = displayItemForCell(r, c);
+        const bucket = cellBuckets.get(makeKey([baseRowKey(r), baseColKey(c)]));
+        const value = metricValue(bucket, item);
+        const formatted = formatValue(value, item);
+        tds.push(`<td class="${formatted === '-' ? 'empty' : ''}">${formatted}</td>`);
+        csvRow.push(value === null ? '' : Math.round(value));
+      }
+      if (showRowTotal) {
+        const totalItem = rowDim === '項目' ? r : filters.items[0];
+        const rowBucket = rowDim === '項目' ? grandBuckets.get('__GRAND__') : rowTotalBuckets.get(r);
+        const totalValue = metricValue(rowBucket, totalItem);
+        const formatted = formatValue(totalValue, totalItem);
+        tds.push(`<td class="${formatted === '-' ? 'empty' : ''}">${formatted}</td>`);
+        csvRow.push(totalValue === null ? '' : Math.round(totalValue));
+      }
+      html += '<tr>' + tds.join('') + '</tr>';
+      lastTable.push(csvRow);
+    }
+
+    if (showColTotal) {
+      const tds = ['<td>合計</td>'];
+      const csvRow = ['合計'];
+      for (const c of cols) {
+        const totalItem = colDim === '項目' ? c : filters.items[0];
+        const colBucket = colDim === '項目' ? grandBuckets.get('__GRAND__') : colTotalBuckets.get(c);
+        const totalValue = metricValue(colBucket, totalItem);
+        const formatted = formatValue(totalValue, totalItem);
+        tds.push(`<td class="${formatted === '-' ? 'empty' : ''}">${formatted}</td>`);
+        csvRow.push(totalValue === null ? '' : Math.round(totalValue));
+      }
+      if (showRowTotal) {
+        const grandItem = filters.items[0];
+        const grandValue = metricValue(grandBuckets.get('__GRAND__'), grandItem);
+        const formatted = formatValue(grandValue, grandItem);
+        tds.push(`<td class="${formatted === '-' ? 'empty' : ''}">${formatted}</td>`);
+        csvRow.push(grandValue === null ? '' : Math.round(grandValue));
+      }
+      html += '<tr>' + tds.join('') + '</tr>';
+      lastTable.push(csvRow);
+    }
+
+    html += '</tbody></table>';
+    el.tableWrap.innerHTML = html;
+    el.resultMeta.innerHTML = `行：${escapeHtml(rowDim)} ／ 列：${escapeHtml(colDim)} ／ 項目：${escapeHtml(itemAxis ? filters.items.join('、') : filters.items[0])}<br>※ 応募単価＝媒体費÷応募、入職単価＝媒体費÷入職として再計算します。元CSVの単価行は合算しません。`;
+    el.resultCard.classList.remove('hidden');
+    el.downloadBtn.disabled = false;
+
+    if (warnings.length) setStatus(el.conditionStatus, 'warn', warnings.join('<br>'));
+    else setStatus(el.conditionStatus, 'ok', '集計しました。');
+  }
+
+  function rowTotalForLabel(label, rowDim, selectedItems, rowTotalBuckets, grandBuckets) {
+    const item = rowDim === '項目' ? label : selectedItems[0];
+    const bucket = rowDim === '項目' ? grandBuckets.get('__GRAND__') : rowTotalBuckets.get(label);
+    const v = metricValue(bucket, item);
+    return v === null ? -Infinity : v;
+  }
+
+  function toCsvCell(value) {
+    const s = String(value ?? '');
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  function downloadCurrentTable() {
+    if (!lastTable.length) return;
+    const csv = '\uFEFF' + lastTable.map(row => row.map(toCsvCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sg_aggregate_table.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleFileChange() {
+    const file = el.file.files[0];
+    if (!file) return;
+    clearStatus(el.loadStatus);
+    clearStatus(el.conditionStatus);
+    el.controlCard.classList.add('hidden');
+    el.resultCard.classList.add('hidden');
+    el.downloadBtn.disabled = true;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const decoded = decodeBuffer(buffer, el.encoding.value);
+      rawRows = parseCSV(decoded.text);
+      longRows = normalize(rawRows);
+      buildSummary(decoded.encoding);
+      setupFilters();
+      setStatus(el.loadStatus, 'ok', `CSVを読み込みました。文字コード：${escapeHtml(decoded.encoding)} ／ ファイル名：${escapeHtml(file.name)}`);
+    } catch (e) {
+      setStatus(el.loadStatus, 'warn', `読み込みに失敗しました。<br>${escapeHtml(e.message)}`);
+    }
+  }
+
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest('button[data-target][data-action]');
+    if (!btn) return;
+    event.preventDefault();
+    const target = $(btn.dataset.target);
+    if (!target) return;
+    const selected = btn.dataset.action === 'all';
+    Array.from(target.options).forEach(opt => opt.selected = selected);
+  });
+
+  el.file.addEventListener('change', handleFileChange);
+  el.encoding.addEventListener('change', () => { if (el.file.files[0]) handleFileChange(); });
+  el.renderBtn.addEventListener('click', renderTable);
+  el.downloadBtn.addEventListener('click', downloadCurrentTable);
+})();
+</script>
+</body>
+</html>
